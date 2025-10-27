@@ -7,6 +7,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<BancoDeDados>(options =>
     options.UseSqlite("Data Source=pessoas.db"));
 
+builder.Services.AddScoped<IPasswordService, PasswordService>();
+
 // Evitar ciclos ao serializar JSON
 builder.Services.AddControllers().AddJsonOptions(opt =>
 {
@@ -65,10 +67,22 @@ using (var scope = app.Services.CreateScope())
 
 // === ENDPOINTS ===
 
-app.MapPost("/pessoa", async (Pessoa pessoa, BancoDeDados db) =>
+app.MapPost("/pessoa", async (
+    Pessoa pessoa,
+    BancoDeDados db,
+    IPasswordService passwordService) =>
 {
     if (string.IsNullOrWhiteSpace(pessoa.Nome))
         return Results.BadRequest(new { Erro = "O nome da pessoa é obrigatório." });
+
+    if (pessoa.Usuario != null)
+    {
+        if (string.IsNullOrWhiteSpace(pessoa.Usuario.SenhaHash))
+            return Results.BadRequest(new { Erro = "A senha é obrigatória." });
+
+        var senhaOriginal = pessoa.Usuario.SenhaHash;
+        pessoa.Usuario.SenhaHash = passwordService.HashPassword(senhaOriginal);
+    }
 
     // Lookup
     pessoa.Telefones.ForEach(t => t.TipoTelefone = null!);
@@ -117,6 +131,19 @@ app.MapGet("/pessoa/{id:int}", async (int id, BancoDeDados db) =>
 
 app.Run();
 
+// === BCrypt.NET ===
+public interface IPasswordService
+{
+    string HashPassword(string password);
+    bool VerifyPassword(string password, string hash);
+}
+
+public class PasswordService : IPasswordService
+{ 
+    public string HashPassword(string password) => BCrypt.Net.BCrypt.HashPassword(password, workFactor: 12);
+
+    public bool VerifyPassword(string password, string hash) => BCrypt.Net.BCrypt.Verify(password, hash);
+}
 
 // === CLASSES E MODELOS ===
 public class Pessoa
@@ -175,7 +202,6 @@ public class Usuario
     public int Id { get; set; }
     public string NomeUsuario { get; set; } = "";
     public string SenhaHash { get; set; } = "";
-    public string? SenhaSalt { get; set; }
     public Role Role { get; set; } = Role.User;
     public bool Ativo { get; set; } = true;
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
