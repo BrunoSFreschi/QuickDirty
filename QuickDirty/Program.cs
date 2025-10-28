@@ -94,7 +94,7 @@ app.MapPost("/pessoa", async (
 
         var senhaOriginal = pessoa.Usuario.SenhaHash;
         pessoa.Usuario.SenhaHash = passwordService.HashPassword(senhaOriginal);
-    }
+    }  
 
     // Lookup
     pessoa.Telefones.ForEach(t => t.TipoTelefone = null!);
@@ -166,8 +166,8 @@ public class Pessoa
     public string Documento { get; set; } = "";
     public TipoPessoa TipoPessoa { get; set; } = TipoPessoa.Fisica;
 
-    public List<Telefone> Telefones { get; set; } = new();
-    public List<Email> Emails { get; set; } = new();
+    public List<Telefone> Telefones { get; set; } = [];
+    public List<Email> Emails { get; set; } = [];
     public Endereco? Endereco { get; set; }
     public Usuario? Usuario { get; set; }
 }
@@ -225,10 +225,8 @@ public class Usuario
     public Pessoa Pessoa { get; set; } = null!;
 }
 
-public class BancoDeDados : DbContext
+public class BancoDeDados(DbContextOptions<BancoDeDados> options) : DbContext(options)
 {
-    public BancoDeDados(DbContextOptions<BancoDeDados> options) : base(options) { }
-
     public DbSet<Pessoa> Pessoas { get; set; } = null!;
     public DbSet<Telefone> Telefones { get; set; } = null!;
     public DbSet<Email> Emails { get; set; } = null!;
