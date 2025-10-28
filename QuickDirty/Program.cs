@@ -214,11 +214,13 @@ public class Usuario
     public int Id { get; set; }
     public string NomeUsuario { get; set; } = "";
     public string SenhaHash { get; set; } = "";
-    public TipoRole Role { get; set; } = null;
     public bool Ativo { get; set; } = true;
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
     public DateTime? UltimoAcesso { get; set; }
     public int PessoaId { get; set; }
+    public int? RoleId { get; set; }
+    [JsonIgnore]
+    public TipoRole? Role { get; set; }
     [JsonIgnore]
     public Pessoa Pessoa { get; set; } = null!;
 }
@@ -259,24 +261,18 @@ public class BancoDeDados : DbContext
             .WithMany()
             .HasForeignKey(e => e.TipoEnderecoId);
 
+        modelBuilder.Entity<Usuario>()
+            .HasOne(u => u.Role)
+            .WithMany()
+            .HasForeignKey(u => u.RoleId);
+
         base.OnModelCreating(modelBuilder);
     }
 }
 
 // ENUMS
-
 public enum TipoPessoa { Fisica, Juridica }
 public enum Role { Super, Admin, Manager, User, Viewer, Support }
-/*
- Role	Descrição	Permissões típicas
-Controla toda a plataforma (nível empresa ou global)	Gerenciar usuários, planos, billing, configurações globais
-Administra uma conta/organização específica	Criar usuários, configurar integrações, gerenciar permissões locais
-Coordena uma equipe ou projeto	Aprovar ações, ver relatórios, editar dados de times
-Usuário comum da conta	Usar funcionalidades principais (CRUD básico)
-Pode apenas visualizar dados	Visualizar relatórios, dashboards e listas
-Suporte técnico interno	Acessar logs, ver status, auxiliar usuários
-*/
-
 
 // LOOKUP TABLES
 public class TipoEndereco { public int Id { get; set; } public string Nome { get; set; } = ""; }
