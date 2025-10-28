@@ -62,6 +62,18 @@ using (var scope = app.Services.CreateScope())
         );
     }
 
+    if (!db.Role.Any())
+    {
+        db.Role.AddRange(
+            new TipoRole { Nome = "Super", Descricao = "Controla toda a plataforma." },
+            new TipoRole { Nome = "Admin", Descricao = "Administra uma conta/organização, criar usuários, configurar integrações, gerenciar permissões locais." },
+            new TipoRole { Nome = "Manager", Descricao = "Coordena uma equipe ou projeto. Aprovar ações, ver relatórios, editar dados de times" },
+            new TipoRole { Nome = "User", Descricao = "Usuário comum" },
+            new TipoRole { Nome = "Viewer", Descricao = "Pode apenas visualizar dados	Visualizar relatórios, dashboards e listas" },
+            new TipoRole { Nome = "Support", Descricao = "Suporte técnico interno, Acessar logs, ver status, auxiliar usuários" }
+        );
+    }
+
     db.SaveChanges();
 }
 
@@ -139,7 +151,7 @@ public interface IPasswordService
 }
 
 public class PasswordService : IPasswordService
-{ 
+{
     public string HashPassword(string password) => BCrypt.Net.BCrypt.HashPassword(password, workFactor: 12);
 
     public bool VerifyPassword(string password, string hash) => BCrypt.Net.BCrypt.Verify(password, hash);
@@ -202,7 +214,7 @@ public class Usuario
     public int Id { get; set; }
     public string NomeUsuario { get; set; } = "";
     public string SenhaHash { get; set; } = "";
-    public Role Role { get; set; } = Role.User;
+    public TipoRole Role { get; set; } = null;
     public bool Ativo { get; set; } = true;
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
     public DateTime? UltimoAcesso { get; set; }
@@ -223,6 +235,7 @@ public class BancoDeDados : DbContext
     public DbSet<TipoEndereco> TiposEnderecos { get; set; } = null!;
     public DbSet<TipoTelefone> TiposTelefones { get; set; } = null!;
     public DbSet<TipoEmail> TiposEmails { get; set; } = null!;
+    public DbSet<TipoRole> Role { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -251,10 +264,22 @@ public class BancoDeDados : DbContext
 }
 
 // ENUMS
-public enum Role { Admin, User, Manager, Guest }
+
 public enum TipoPessoa { Fisica, Juridica }
+public enum Role { Super, Admin, Manager, User, Viewer, Support }
+/*
+ Role	Descrição	Permissões típicas
+Controla toda a plataforma (nível empresa ou global)	Gerenciar usuários, planos, billing, configurações globais
+Administra uma conta/organização específica	Criar usuários, configurar integrações, gerenciar permissões locais
+Coordena uma equipe ou projeto	Aprovar ações, ver relatórios, editar dados de times
+Usuário comum da conta	Usar funcionalidades principais (CRUD básico)
+Pode apenas visualizar dados	Visualizar relatórios, dashboards e listas
+Suporte técnico interno	Acessar logs, ver status, auxiliar usuários
+*/
+
 
 // LOOKUP TABLES
 public class TipoEndereco { public int Id { get; set; } public string Nome { get; set; } = ""; }
 public class TipoTelefone { public int Id { get; set; } public string Nome { get; set; } = ""; }
 public class TipoEmail { public int Id { get; set; } public string Nome { get; set; } = ""; }
+public class TipoRole { public int Id { get; set; } public string Nome { get; set; } = ""; public string Descricao { get; set; } = ""; }
