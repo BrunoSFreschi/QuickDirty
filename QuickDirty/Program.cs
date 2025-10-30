@@ -268,6 +268,14 @@ public class BancoDeDados(DbContextOptions<BancoDeDados> options) : DbContext(op
     }
 }
 
+public class JwtSettings
+{
+    public string Key { get; set; } = string.Empty;
+    public string Issuer { get; set; } = string.Empty;
+    public string Audience { get; set; } = string.Empty;
+    public int ExpiryMinutes { get; set; } = 60;
+}
+
 // ENUMS
 public enum TipoPessoa { Fisica, Juridica }
 public enum Role { Super, Admin, Manager, User, Viewer, Support }
