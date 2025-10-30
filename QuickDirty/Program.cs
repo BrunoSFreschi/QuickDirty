@@ -308,6 +308,13 @@ public class Usuario
     public Pessoa Pessoa { get; set; } = null!;
 }
 
+
+public class LoginRequest
+{
+    public string Username { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+}
+
 public class BancoDeDados(DbContextOptions<BancoDeDados> options) : DbContext(options)
 {
     public DbSet<Pessoa> Pessoas { get; set; } = null!;
