@@ -142,6 +142,62 @@ app.MapPost("/pessoa", async (
     return Results.Created($"/pessoa/{pessoa.Id}", pessoaCompleta);
 });
 
+app.MapPost("/login", async (
+    LoginRequest request,
+    BancoDeDados db,
+    IPasswordService password,
+    IConfiguration configuration) =>
+{
+    if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
+        return Results.BadRequest(new { Erro = "Usuário e senha são obrigatórios." });
+
+    var usuario = await db.Usuarios
+        .Include(u => u.Pessoa)
+        .Include(u => u.Role)
+        .FirstOrDefaultAsync(u => u.NomeUsuario == request.Username);
+
+    if (usuario is null || !password.VerifyPassword(request.Password, usuario.SenhaHash))
+        return Results.Unauthorized();
+
+
+    // JWT config
+    var jwtSettings = configuration.GetSection("Jwt").Get<JwtSettings>();
+    var key = Encoding.UTF8.GetBytes(jwtSettings!.Key);
+
+    var tokenHandler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+    ;
+    var tokenDescriptor = new SecurityTokenDescriptor
+    {
+        Subject = new System.Security.Claims.ClaimsIdentity(new[]
+        {
+            new Claim(ClaimTypes.NameIdentifier, usuario.Id.ToString()),
+            new Claim(ClaimTypes.Name, usuario.NomeUsuario),
+            new Claim(ClaimTypes.Role, usuario.Role?.Nome ?? "User")
+        }),
+        Expires = DateTime.UtcNow.AddMinutes(jwtSettings.ExpiryMinutes),
+        Issuer = jwtSettings.Issuer,
+        Audience = jwtSettings.Audience,
+        SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+    };
+
+    var token = tokenHandler.CreateToken(tokenDescriptor);
+
+    var tokenString = tokenHandler.WriteToken(token);
+    
+    
+    return Results.Ok(new
+    {
+        Token = tokenString,
+        Usuario = new
+        {
+            usuario.Id,
+            usuario.NomeUsuario,
+            Role = usuario.Role?.Nome,
+            NomePessoa = usuario.Pessoa?.Nome
+        }
+    });
+});
+
 app.MapGet("/pessoas", async (BancoDeDados db) =>
 {
     var pessoas = await db.Pessoas
