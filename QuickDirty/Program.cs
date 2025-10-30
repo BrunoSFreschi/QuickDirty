@@ -1,13 +1,20 @@
+ï»¿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using System.Security.Claims;
+using System.Text;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
+
 
 // Configurar SQLite e EF Core
 builder.Services.AddDbContext<BancoDeDados>(options =>
     options.UseSqlite("Data Source=pessoas.db"));
 
+
 builder.Services.AddScoped<IPasswordService, PasswordService>();
+
 
 // Evitar ciclos ao serializar JSON
 builder.Services.AddControllers().AddJsonOptions(opt =>
@@ -26,8 +33,8 @@ builder.Services.AddAuthentication(options =>
     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 }).AddJwtBearer(options =>
 {
-    var jwtSettings = jwtSection.Get<JwtSettings>(); // lÃª os valores
-    var key = Encoding.UTF8.GetBytes(jwtSettings.Key);
+    var jwtSettings = jwtSection.Get<JwtSettings>();
+    var key = Encoding.UTF8.GetBytes(jwtSettings!.Key);
 
     options.TokenValidationParameters = new TokenValidationParameters
     {
@@ -44,7 +51,12 @@ builder.Services.AddAuthentication(options =>
 
 var app = builder.Build();
 
-// Seed inicial e criação do banco
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+
+// Seed inicial e criaÃ§Ã£o do banco
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<BancoDeDados>();
@@ -56,10 +68,10 @@ using (var scope = app.Services.CreateScope())
             new TipoEndereco { Nome = "Outro" },
             new TipoEndereco { Nome = "Casa" },
             new TipoEndereco { Nome = "Apartamento" },
-            new TipoEndereco { Nome = "Condomínio" },
-            new TipoEndereco { Nome = "Sítio" },
+            new TipoEndereco { Nome = "CondomÃ­nio" },
+            new TipoEndereco { Nome = "SÃ­tio" },
             new TipoEndereco { Nome = "Fazenda" },
-            new TipoEndereco { Nome = "Chácara" },
+            new TipoEndereco { Nome = "ChÃ¡cara" },
             new TipoEndereco { Nome = "Kitnet" },
             new TipoEndereco { Nome = "Sobrado" }
         );
@@ -93,35 +105,35 @@ using (var scope = app.Services.CreateScope())
     {
         db.Role.AddRange(
             new TipoRole { Nome = "Super", Descricao = "Controla toda a plataforma." },
-            new TipoRole { Nome = "Admin", Descricao = "Administra uma conta/organização, criar usuários, configurar integrações, gerenciar permissões locais." },
-            new TipoRole { Nome = "Manager", Descricao = "Coordena uma equipe ou projeto. Aprovar ações, ver relatórios, editar dados de times" },
-            new TipoRole { Nome = "User", Descricao = "Usuário comum" },
-            new TipoRole { Nome = "Viewer", Descricao = "Pode apenas visualizar dados	Visualizar relatórios, dashboards e listas" },
-            new TipoRole { Nome = "Support", Descricao = "Suporte técnico interno, Acessar logs, ver status, auxiliar usuários" }
+            new TipoRole { Nome = "Admin", Descricao = "Administra uma conta/organizaÃ§Ã£o, criar usuÃ¡rios, configurar integraÃ§Ãµes, gerenciar permissÃµes locais." },
+            new TipoRole { Nome = "Manager", Descricao = "Coordena uma equipe ou projeto. Aprovar aÃ§Ãµes, ver relatÃ³rios, editar dados de times" },
+            new TipoRole { Nome = "User", Descricao = "UsuÃ¡rio comum" },
+            new TipoRole { Nome = "Viewer", Descricao = "Pode apenas visualizar dados	Visualizar relatÃ³rios, dashboards e listas" },
+            new TipoRole { Nome = "Support", Descricao = "Suporte tÃ©cnico interno, Acessar logs, ver status, auxiliar usuÃ¡rios" }
         );
     }
 
     db.SaveChanges();
 }
 
-// === ENDPOINTS ===
 
+// === ENDPOINTS ===
 app.MapPost("/pessoa", async (
     Pessoa pessoa,
     BancoDeDados db,
     IPasswordService passwordService) =>
 {
     if (string.IsNullOrWhiteSpace(pessoa.Nome))
-        return Results.BadRequest(new { Erro = "O nome da pessoa é obrigatório." });
+        return Results.BadRequest(new { Erro = "O nome da pessoa Ã© obrigatÃ³rio." });
 
     if (pessoa.Usuario != null)
     {
         if (string.IsNullOrWhiteSpace(pessoa.Usuario.SenhaHash))
-            return Results.BadRequest(new { Erro = "A senha é obrigatória." });
+            return Results.BadRequest(new { Erro = "A senha Ã© obrigatÃ³ria." });
 
         var senhaOriginal = pessoa.Usuario.SenhaHash;
         pessoa.Usuario.SenhaHash = passwordService.HashPassword(senhaOriginal);
-    }  
+    }
 
     // Lookup
     pessoa.Telefones.ForEach(t => t.TipoTelefone = null!);
@@ -221,10 +233,11 @@ app.MapGet("/pessoa/{id:int}", async (int id, BancoDeDados db) =>
         .AsSplitQuery()
         .FirstOrDefaultAsync(p => p.Id == id);
 
-    return pessoa is null ? Results.NotFound(new { Erro = "Pessoa não encontrada." }) : Results.Ok(pessoa);
+    return pessoa is null ? Results.NotFound(new { Erro = "Pessoa nÃ£o encontrada." }) : Results.Ok(pessoa);
 });
 
 app.Run();
+
 
 // === BCrypt.NET ===
 public interface IPasswordService
@@ -239,6 +252,7 @@ public class PasswordService : IPasswordService
 
     public bool VerifyPassword(string password, string hash) => BCrypt.Net.BCrypt.Verify(password, hash);
 }
+
 
 // === CLASSES E MODELOS ===
 public class Pessoa
