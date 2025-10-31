@@ -135,6 +135,18 @@ app.MapPost("/pessoa", async (
         pessoa.Usuario.SenhaHash = passwordService.HashPassword(senhaOriginal);
     }
 
+    // 
+    //
+    //var emailsDaPessoa = pessoa.Emails.Select(e => e.Endereco).ToList();
+
+    //var emailExistente = await db.Emails
+    //    .FirstOrDefaultAsync(e => emailsDaPessoa.Contains(e.Endereco));
+
+    //if (emailExistente != null)
+    //{
+    //    // Já existe um e-mail igual no banco
+    //}
+
     // Lookup
     pessoa.Telefones.ForEach(t => t.TipoTelefone = null!);
     pessoa.Emails.ForEach(e => e.TipoEmail = null!);
